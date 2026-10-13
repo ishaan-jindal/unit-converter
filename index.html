@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unit Converter</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: system-ui, sans-serif;
+      background: #f1f3f6;
+    }
+    .card {
+      width: min(24rem, 90vw);
+      padding: 1.5rem;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
+    }
+    h1 { margin-top: 0; font-size: 1.4rem; }
+    label { display: block; margin-bottom: 1rem; font-size: 0.9rem; }
+    input, select, button { width: 100%; padding: 0.5rem; margin-top: 0.25rem; font: inherit; box-sizing: border-box; }
+    .row { display: flex; gap: 0.5rem; align-items: center; }
+    .row label { flex: 1; }
+    .row button { width: auto; cursor: pointer; }
+    .result { font-size: 1.25rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Unit Converter</h1>
+    <label>Category
+      <select id="category">
+        <option value="length">Length</option>
+        <option value="mass">Mass</option>
+        <option value="temperature">Temperature</option>
+      </select>
+    </label>
+    <label>Value
+      <input id="value" type="number" step="any" value="1">
+    </label>
+    <div class="row">
+      <label>From <select id="from"></select></label>
+      <button id="swap" type="button" aria-label="Swap units">&#8646;</button>
+      <label>To <select id="to"></select></label>
+    </div>
+    <p class="result">= <output id="result" for="value from to" aria-live="polite"></output></p>
+  </main>
+
+  <script>
+    const units = {
+      length: { m: 1, km: 1000, cm: 0.01, mm: 0.001, mi: 1609.344, yd: 0.9144, ft: 0.3048, in: 0.0254 },
+      mass: { kg: 1, g: 0.001, mg: 1e-6, lb: 0.45359237, oz: 0.028349523125 },
+    };
+    const toC = { C: v => v, F: v => (v - 32) * 5 / 9, K: v => v - 273.15 };
+    const fromC = { C: c => c, F: c => c * 9 / 5 + 32, K: c => c + 273.15 };
+
+    function convert(category, value, from, to) {
+      if (category === 'temperature') return fromC[to](toC[from](value));
+      return value * units[category][from] / units[category][to];
+    }
+
+    console.assert(convert('length', 1, 'km', 'm') === 1000, '1 km = 1000 m');
+    console.assert(convert('temperature', 0, 'C', 'F') === 32, '0 C = 32 F');
+    console.assert(convert('temperature', 0, 'K', 'C') === -273.15, '0 K = -273.15 C');
+    console.assert(Math.abs(convert('mass', 1, 'lb', 'kg') - 0.45359237) < 1e-12, '1 lb = 0.4536 kg');
+
+    const $ = id => document.getElementById(id);
+    const [category, input, from, to, result] = ['category', 'value', 'from', 'to', 'result'].map($);
+
+    function fillUnits() {
+      const list = Object.keys(category.value === 'temperature' ? toC : units[category.value]);
+      [from, to].forEach((select, i) => {
+        select.replaceChildren(...list.map(u => new Option(u, u)));
+        select.selectedIndex = i;
+      });
+    }
+
+    function update() {
+      const v = input.valueAsNumber;
+      result.value = Number.isFinite(v)
+        ? `${Number(convert(category.value, v, from.value, to.value).toPrecision(10))} ${to.value}`
+        : '';
+    }
+
+    category.addEventListener('change', () => { fillUnits(); update(); });
+    input.addEventListener('input', update);
+    from.addEventListener('change', update);
+    to.addEventListener('change', update);
+    $('swap').addEventListener('click', () => {
+      [from.value, to.value] = [to.value, from.value];
+      update();
+    });
+
+    fillUnits();
+    update();
+  </script>
+</body>
+</html>
